@@ -1,65 +1,64 @@
 # Daytonawiser2mqtt
 
 ## Introduction
+
 Daytonawiser2mqtt is a Python-based service designed to establish a bidirectional communication link between a local Wiser gateway and an MQTT broker. It enables the publishing of temperature data and the sending of commands to and from the Wiser heating system. This project utilizes Docker for easy deployment and management.
 
 ## Features
-- **Bidirectional Communication:** Send and receive commands between Wiser gateway and MQTT.
+
 - **Temperature Publishing:** Automatically publish temperature readings to MQTT.
 - **Away mode Command:** Send command to control away and home mode.
 - **Docker Support:** Run as a container for easy setup and scalability.
 
 ## Prerequisites
+
+The script can run with python or docker.
+
 Before you begin, ensure you have Docker installed on your system. You can download it from [Docker's official website](https://www.docker.com/get-started).
 
 ## Installation
 
+### Setup the service using the config.json
+
+To start using Daytonawiser2mqtt, configure your MQTT broker details and Wiser gateway settings in the configuration file (config.json). You can do so by renaming the config.json.example file and editing your configuration:
+
+```
+{
+    "wiser_gw_ip"        : "1.1.1.1",
+    "wiser_gw_token"     : "aaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbcccccccccccccccccccccccccccccccdddddddddddddddddddddddddd",
+    "wiser_gw_away_temp" : 150,
+
+    "mqtt_broker_ip"     : "1.1.1.2",
+    "mqtt_broker_port"   : 1883,
+    "mqtt_broker_user"   : "username",
+    "mqtt_broker_pass"   : "password",
+    "mqtt_broker_topic"  : "wiser_gw"
+}
+```
+
+After setting up your configuration run it following the python or docker instructions.
+
+### Using Python
+
+```
+pip install --no-cache-dir -r requirements.txt
+cd src
+python mqtt.py
+```
+
 ### Using Docker
 
-1. Clone this repository
+1. Build the Docker image:
 
 ```
-to do
-```
-   
-2. Build the Docker image:
-
-```
-to do
+docker build -t wiser2mqtt .
 ```
 
-3. Run the Docker container:
+2. Run the Docker container:
 
 ```
-to do
+docker run -d wiser2mqtt
 ```
-
-## Usage
-
-To start using Daytonawiser2mqtt, configure your MQTT broker details and Wiser gateway settings in the configuration file (config.ini). Here's an example of how to set it up:
-
-```
-[mqtt]
-broker = your.mqtt.broker.ip
-port = 1883
-username = yourusername
-password = yourpassword
-
-[wiser]
-host = your.wiser.gateway.ip
-secret = yoursecretkey
-```
-
-After setting up your configuration, restart the Docker container to apply changes:
-
-```
-docker restart daytonawiser2mqtt
-```
-
-## Libraries Used
-
-* Paho MQTT Python: For interacting with MQTT brokers.
-* Wiser Heating API: For interfacing with the Wiser Heating system.
 
 ## Contributing
 
@@ -74,14 +73,17 @@ Open a Pull Request
 
 ## License
 
-To be defined
+BSD 3-Clause License
 
-##Acknowledgements
+## Acknowledgements
 
-* Paho MQTT Python
-* Wiser Heating API
+* Wiser Heating API https://github.com/asantaga/wiserheatingapi for the endpoints to call on the wiser gateway
+* Paho MQTT Python https://github.com/eclipse/paho.mqtt.python 
 
 ## ToDo
 
-* [ ] Complete and extend this Readme
+* [x] Complete and extend this Readme
 * [ ] Implement best practice https://testdriven.io/blog/docker-best-practices/#run-only-one-process-per-container
+* [ ] Add TRV management
+* [ ] Add light switch management
+* [ ] Add shutters swictch management
