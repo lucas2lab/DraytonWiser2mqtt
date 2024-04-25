@@ -2,40 +2,60 @@ import time
 import json
 import paho.mqtt.client as mqtt
 import requests
+import signal
+import sys
 
 with open("src/config.json") as f:
     cfg = json.load(f)
 
-def get_wiser_data():
-    headers = {
+def signal_handler(sig, frame):
+    print('Closing service...')
+    mqttc.disconnect()
+    mqttc.loop_stop()
+    sys.exit(0)
+
+def get_wiser_headers():
+    return {
         'SECRET': cfg['wiser_gw_token'],
         'Content-Type': 'application/json;charset=UTF-8',
-        }
-    req = requests.get('http://{}/data/domain/'.format(cfg['wiser_gw_ip']), headers=headers)
+    }
+
+def get_wiser_data():
+    try:
+        headers = get_wiser_headers()    
+        req = requests.get('http://{}/data/domain/'.format(cfg['wiser_gw_ip']), headers=headers)
+        data = req.json()
+    except Exception as e:
+        print(f"Error occurred while retreiving the gateway system data: {e}")
+        return {}
 
     wiser_gw = {}
-    wiser_gw["mode"] = req.json()["System"]["OverrideType"]
-    wiser_gw["connection"] = req.json()["System"]["CloudConnectionStatus"]
-    wiser_gw["Room"] = []
-    for rooms in req.json()["Room"]:
-        wiser_gw["Room"].append({"id": rooms["id"], "name": rooms["Name"], "temperature": rooms["CalculatedTemperature"]})
+    if "System" in data:
+        wiser_gw["mode"] = data["System"].get("OverrideType")
+        wiser_gw["connection"] = data["System"].get("CloudConnectionStatus")
+        wiser_gw["Room"] = []
+        for rooms in req.json()["Room"]:
+            wiser_gw["Room"].append({"id": rooms["id"], "name": rooms["Name"], "temperature": rooms["CalculatedTemperature"]})
+    else:
+        print(f"Error occurred while parsing the gateway system data: {data}")
     
     return wiser_gw
 
 def set_wiser_home(state):
-    headers = {
-        'SECRET': cfg['wiser_gw_token'],
-        'Content-Type': 'application/json;charset=UTF-8',
-        }
-    
-    data = {}
-    if state == "Away":
-        data = { "type": "Away", "setPoint": cfg['wiser_gw_away_temp'] }
-    else:
-        data = { "type": "None", "setPoint": 0 }
+    headers = get_wiser_headers()    
+    payload = {}
 
-    req = requests.patch('http://{}/data/domain/System/RequestOverride'.format(cfg['wiser_gw_ip']), data=json.dumps(data), headers=headers)
-    print(req.text)
+    if state == "Away":
+        payload = { "type": "Away", "setPoint": cfg['wiser_gw_away_temp'] }
+    else:
+        payload = { "type": "None", "setPoint": 0 }
+
+    try:
+        url = 'http://{}/data/domain/System/RequestOverride'.format(cfg['wiser_gw_ip'])
+        req = requests.patch(url, data=json.dumps(payload), headers=headers)
+        req.raise_for_status() # Raises a HTTPError if the response was unsuccessful
+    except requests.exceptions.RequestException as e:
+        print(f"Error occurred while setting the home state: {e}")
 
 def on_connect(client, userdata, flags, reason_code, properties):
     print(f"Connected with result code {reason_code}")
@@ -56,6 +76,11 @@ def on_publish(client, userdata, mid, reason_code, properties):
     except KeyError:
         print("on_publish() is called with a mid not present in unacked_publish")
 
+# signal handling
+
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
 # mqtt setup
 unacked_publish = set()
 
@@ -74,7 +99,7 @@ mqttc.connect(cfg["mqtt_broker_ip"], cfg["mqtt_broker_port"], 60)
 
 mqttc.loop_start()
 
-while(1):
+while True:
     wiser_gw = get_wiser_data()
 
     msg_info = mqttc.publish(cfg["mqtt_broker_topic"], json.dumps(wiser_gw), qos=1)
@@ -86,6 +111,3 @@ while(1):
     msg_info.wait_for_publish()
 
     time.sleep(cfg["wiser_gw_refresh"])
-
-mqttc.disconnect()
-mqttc.loop_stop()
