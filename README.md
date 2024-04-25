@@ -83,6 +83,7 @@ BSD 3-Clause License
 ## ToDo
 
 * [x] Complete and extend this Readme
+* [ ] Handle unreachable mqtt or wiser gateway gracefully
 * [ ] Implement best practice https://testdriven.io/blog/docker-best-practices/#run-only-one-process-per-container
 * [ ] Add TRV management
 * [ ] Add light switch management

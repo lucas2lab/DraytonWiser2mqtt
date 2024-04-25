@@ -2,6 +2,7 @@
     "wiser_gw_ip"        : "1.1.1.1",
     "wiser_gw_token"     : "aaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbcccccccccccccccccccccccccccccccdddddddddddddddddddddddddd",
     "wiser_gw_away_temp" : 150,
+    "wiser_gw_refresh"   : 300,
 
     "mqtt_broker_ip"     : "1.1.1.2",
     "mqtt_broker_port"   : 1883,
