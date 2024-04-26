@@ -20,6 +20,8 @@ Before you begin, ensure you have Docker installed on your system. You can downl
 
 ### Setup the service using the config.json
 
+Follow the documentation on https://github.com/asantaga/wiserheatingapi?tab=readme-ov-file#1-find-your-heathub-secret-key to get the token on your Drayton Wiser Gateway.
+
 To start using Daytonawiser2mqtt, configure your MQTT broker details and Wiser gateway settings in the configuration file (config.json). You can do so by renaming the config.json.example file and editing your configuration:
 
 ```
