@@ -5,11 +5,34 @@ import requests
 import signal
 import sys
 
-with open("src/config.json") as f:
-    cfg = json.load(f)
+import logging
+from sys import stdout
+
+def setup_logging():
+    log = logging.getLogger('logger')
+    log.setLevel(logging.DEBUG) # set logger level
+    logFormatter = logging.Formatter("%(name)-12s %(asctime)s %(levelname)-8s %(filename)s:%(funcName)s %(message)s")
+    consoleHandler = logging.StreamHandler(stdout) #set streamhandler to stdout
+    consoleHandler.setFormatter(logFormatter)
+    log.addHandler(consoleHandler)
+    return log
+
+log = setup_logging()
+
+def load_config():
+    try:
+        with open("src/config.json") as f:
+            cfg = json.load(f)
+            log.info("Config loaded")
+    except Exception as e:
+        log.error("Failed to load config: %s", e)
+        sys.exit(1)
+    return cfg
+
+cfg = load_config()
 
 def signal_handler(sig, frame):
-    print('Closing service...')
+    log.info("Received signal {}. Exiting...".format(sig))
     mqttc.disconnect()
     mqttc.loop_stop()
     sys.exit(0)
@@ -26,18 +49,19 @@ def get_wiser_data():
         req = requests.get('http://{}/data/domain/'.format(cfg['wiser_gw_ip']), headers=headers)
         data = req.json()
     except Exception as e:
-        print(f"Error occurred while retreiving the gateway system data: {e}")
+        log.error(f"Error occurred while retreiving the gateway system data: {e}")
         return {}
 
     wiser_gw = {}
     if "System" in data:
+        log.debug(f"Gateway system data received")
         wiser_gw["mode"] = data["System"].get("OverrideType")
         wiser_gw["connection"] = data["System"].get("CloudConnectionStatus")
         wiser_gw["Room"] = []
         for rooms in req.json()["Room"]:
             wiser_gw["Room"].append({"id": rooms["id"], "name": rooms["Name"], "temperature": rooms["CalculatedTemperature"]})
     else:
-        print(f"Error occurred while parsing the gateway system data: {data}")
+        log.error(f"Error occurred while parsing the gateway system data: {data}")
     
     return wiser_gw
 
@@ -55,29 +79,28 @@ def set_wiser_home(state):
         req = requests.patch(url, data=json.dumps(payload), headers=headers)
         req.raise_for_status() # Raises a HTTPError if the response was unsuccessful
     except requests.exceptions.RequestException as e:
-        print(f"Error occurred while setting the home state: {e}")
+        log.error(f"Error occurred while setting the home state: {e}")
 
 def on_connect(client, userdata, flags, reason_code, properties):
-    print(f"Connected with result code {reason_code}")
+    log.debug(f"Connected with result code {reason_code}")
     #client.subscribe("$SYS/#")
     client.subscribe("wiser_gw/mode")
 
 def on_message(client, userdata, msg):
-    print(msg.topic+" "+str(msg.payload))
+    log.info(msg.topic+" "+str(msg.payload))
     if msg.topic == "wiser_gw/mode":
         mode = json.loads(msg.payload.decode())["mode"]
-        print(f"Setting mode to {mode}")
+        log.info(f"Setting mode to {mode}")
         set_wiser_home(mode)
 
 def on_publish(client, userdata, mid, reason_code, properties):
     try:
-        print(f"mid: {mid} reason_code: {reason_code}")
+        log.debug(f"mid: {mid} reason_code: {reason_code}")
         userdata.remove(mid)
     except KeyError:
-        print("on_publish() is called with a mid not present in unacked_publish")
+        log.error("on_publish() is called with a mid not present in unacked_publish")
 
 # signal handling
-
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 
@@ -95,7 +118,6 @@ mqttc.username_pw_set(cfg["mqtt_broker_user"], cfg["mqtt_broker_pass"])
 
 # mqtt & wiser logic
 mqttc.connect(cfg["mqtt_broker_ip"], cfg["mqtt_broker_port"], 60)
-
 
 mqttc.loop_start()
 
