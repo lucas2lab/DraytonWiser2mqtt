@@ -59,7 +59,10 @@ def get_wiser_data():
         wiser_gw["connection"] = data["System"].get("CloudConnectionStatus")
         wiser_gw["Room"] = []
         for rooms in req.json()["Room"]:
-            wiser_gw["Room"].append({"id": rooms["id"], "name": rooms["Name"], "temperature": rooms["CalculatedTemperature"]})
+            if rooms["CalculatedTemperature"] > 0:
+                wiser_gw["Room"].append({"id": rooms["id"], "name": rooms["Name"], "temperature": rooms["CalculatedTemperature"]})
+            else:
+                log.error(f"Error occurred while parsing the gateway room data: {rooms}")
     else:
         log.error(f"Error occurred while parsing the gateway system data: {data}")
     
